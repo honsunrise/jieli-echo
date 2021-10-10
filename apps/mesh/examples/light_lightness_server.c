@@ -56,7 +56,7 @@ const u16 config_bt_mesh_proxy_node_adv_interval = ADV_SCAN_UNIT(300); // unit: 
  * @brief Conifg complete local name
  */
 /*-----------------------------------------------------------*/
-#define BLE_DEV_NAME        'L', 'e', 'd', 'L', 'i','g' ,'h' ,'t','n' ,'e' ,'s' ,'s'  , '_', 's', 'r', 'v'
+#define BLE_DEV_NAME        'L', 'i','g' ,'h' ,'t','n' ,'e' ,'s' ,'s'  , '_', 's', 'r', 'v'
 
 const uint8_t mesh_name[] = {
     // Name
@@ -70,11 +70,15 @@ void get_mesh_adv_name(u8 *len, u8 **data)
     *data = mesh_name;
 }
 
+static struct bt_mesh_health_srv health_srv = {};
+
+BT_MESH_HEALTH_PUB_DEFINE(health_pub, 0);
+
 /**
  * @brief Conifg MAC of current demo
  */
 /*-----------------------------------------------------------*/
-#define CUR_DEVICE_MAC_ADDR         0x222233445566
+#define CUR_DEVICE_MAC_ADDR         0x122335445566
 
 /*
  * Publication Declarations
@@ -92,17 +96,12 @@ void get_mesh_adv_name(u8 *len, u8 **data)
  * transmission occurs.
  *
  */
-BT_MESH_MODEL_PUB_DEFINE(gen_onoff_pub_srv, NULL, 2 + 2);
-
-/* Generic OnOff Model Operation Codes */
-#define BT_MESH_MODEL_OP_GEN_ONOFF_GET			BT_MESH_MODEL_OP_2(0x82, 0x01)
-#define BT_MESH_MODEL_OP_GEN_ONOFF_SET			BT_MESH_MODEL_OP_2(0x82, 0x02)
-#define BT_MESH_MODEL_OP_GEN_ONOFF_SET_UNACK	BT_MESH_MODEL_OP_2(0x82, 0x03)
-#define BT_MESH_MODEL_OP_GEN_ONOFF_STATUS		BT_MESH_MODEL_OP_2(0x82, 0x04)
-
+BT_MESH_MODEL_PUB_DEFINE(gen_onoff_pub_srv, NULL, 2 + 3);
+BT_MESH_MODEL_PUB_DEFINE(light_lightness_srv, NULL, 2 + 5);
+BT_MESH_MODEL_PUB_DEFINE(light_ctl_srv, NULL, 2 + 9);
 
 /* Company Identifiers (see Bluetooth Assigned Numbers) */
-#define BT_COMP_ID_LF           0x05D6 // Zhuhai Jieli technology Co.,Ltd
+#define BT_COMP_ID_LF           0x0002 // 0x05D6 // Zhuhai Jieli technology Co.,Ltd
 
 /* LED NUMBER */
 #define LED0_GPIO_PIN           0
@@ -120,23 +119,17 @@ static struct bt_mesh_cfg_srv cfg_srv = {
     .relay          = BT_MESH_FEATURES_GET(BT_MESH_FEAT_RELAY),
     .frnd           = BT_MESH_FEATURES_GET(BT_MESH_FEAT_FRIEND),
     .gatt_proxy     = BT_MESH_FEATURES_GET(BT_MESH_FEAT_PROXY),
-    .beacon         = BT_MESH_BEACON_DISABLED,
+    .beacon         = BT_MESH_BEACON_ENABLED,
     .default_ttl    = 7,
 };
 
-extern const struct bt_mesh_model_op gen_onpowerup_srv_op[];
-extern const struct bt_mesh_model_op gen_onpowerup_setup_srv_op[];
+extern const struct bt_mesh_model_op light_ctl_srv_op[];
+extern const struct bt_mesh_model_op light_ctl_setup_srv_op[];
 extern const struct bt_mesh_model_op light_lightness_srv_op[];
 extern const struct bt_mesh_model_op light_lightness_setup_srv_op[];
-extern const struct bt_mesh_model_op gen_level_server[];
 extern const struct bt_mesh_model_op gen_onoff_srv_op[];
-extern const struct bt_mesh_model_op gen_onoff_cli_op[];
 
-extern struct onoff_state dev_onoff_state[];
-extern struct level_state light_level_state;
 extern struct light_state dev_light_state;
-extern struct onpowerup_state dev_onpowerup_state;
-
 /*
  *
  * Element Model Declarations
@@ -144,13 +137,13 @@ extern struct onpowerup_state dev_onpowerup_state;
  * Element 0 Root Models
  */
 struct bt_mesh_model root_models[] = {
+    BT_MESH_MODEL_HEALTH_SRV(&health_srv, &health_pub),
     BT_MESH_MODEL_CFG_SRV(&cfg_srv),
-    BT_MESH_MODEL(BT_MESH_MODEL_ID_GEN_ONOFF_SRV, 			  gen_onoff_srv_op, 		  	&gen_onoff_pub_srv, &dev_onoff_state[0]),
-    BT_MESH_MODEL(BT_MESH_MODEL_ID_GEN_ONOFF_CLI, 			  gen_onoff_cli_op, 		  	&gen_onoff_pub_srv, &dev_onoff_state[0]),
-    BT_MESH_MODEL(BT_MESH_MODEL_ID_GEN_LEVEL_SRV, 	  		  gen_level_server, 			&gen_onoff_pub_srv, &light_level_state),
-    //BT_MESH_MODEL(BT_MESH_MODEL_ID_GEN_POWER_ONOFF_SRV, 	  gen_onpowerup_srv_op, 	  	&gen_onoff_pub_srv, &dev_onpowerup_state),
-    BT_MESH_MODEL(BT_MESH_MODEL_ID_LIGHT_LIGHTNESS_SRV, 	  light_lightness_srv_op,		&gen_onoff_pub_srv, &dev_light_state),
-    BT_MESH_MODEL(BT_MESH_MODEL_ID_LIGHT_LIGHTNESS_SETUP_SRV, light_lightness_setup_srv_op, &gen_onoff_pub_srv, &dev_light_state),
+    BT_MESH_MODEL(BT_MESH_MODEL_ID_GEN_ONOFF_SRV, 			  gen_onoff_srv_op, 		  	&gen_onoff_pub_srv,     &dev_light_state),
+    // BT_MESH_MODEL(BT_MESH_MODEL_ID_LIGHT_LIGHTNESS_SRV, 	  light_lightness_srv_op,		&light_lightness_srv,   &dev_light_state),
+    // BT_MESH_MODEL(BT_MESH_MODEL_ID_LIGHT_LIGHTNESS_SETUP_SRV, light_lightness_setup_srv_op, &light_lightness_srv,   &dev_light_state),
+    // BT_MESH_MODEL(BT_MESH_MODEL_ID_LIGHT_LIGHTNESS_SRV, 	  light_ctl_srv_op,		        &light_ctl_srv,         &dev_light_state),
+    // BT_MESH_MODEL(BT_MESH_MODEL_ID_LIGHT_LIGHTNESS_SETUP_SRV, light_ctl_setup_srv_op,       &light_ctl_srv,         &dev_light_state),
 };
 
 /*
@@ -187,7 +180,7 @@ static const struct bt_mesh_prov prov = {
 
 static void mesh_init(void)
 {
-    log_info("--func=%s", __FUNCTION__);
+    log_info("---func=%s", __FUNCTION__);
 
     int err = bt_mesh_init(&prov, &composition);
     if (err) {

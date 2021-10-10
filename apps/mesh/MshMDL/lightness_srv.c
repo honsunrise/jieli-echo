@@ -3,6 +3,7 @@
 #include "bt_common.h"
 #include "api/sig_mesh_api.h"
 #include "model_api.h"
+#include "state.h"
 
 #define LOG_TAG             "[Light_Lightness]"
 #define LOG_ERROR_ENABLE
@@ -43,51 +44,11 @@ extern void pseudo_random_genrate(uint8_t *dest, unsigned size);
 #define Cannot_Set_Range_Min	0x01
 #define Cannot_Set_Range_Max	0x02
 
-struct light_state {
-    u16 lightness_actual;
-    u16 lightness_linear;
-    u16 lightness_default;
-    u16 lightness_last;
-    u16 lightness_range_min;
-    u16 lightness_range_max;
-    u8_t led_gpio_pin;
-};
-
-struct onoff_state {
-    u8_t current;
-    u8_t previous;
-    u8_t led_gpio_pin;
-};
-
 struct light_state dev_light_state =  {
     .lightness_actual = 0,
     .lightness_last = 0,
-    .led_gpio_pin = IO_PORTB_07,
+    .led_gpio_pin = 0,
 };
-
-struct level_state {
-    s16 level;
-    u8_t led_gpio_pin;
-};
-
-extern struct bt_mesh_model root_models[];
-/*
- * Publication Declarations
- *
- * The publication messages are initialized to the
- * the size of the opcode + content
- *
- * For publication, the message must be in static or global as
- * it is re-transmitted several times. This occurs
- * after the function that called bt_mesh_model_publish() has
- * exited and the stack is no longer valid.
- *
- * Note that the additional 4 bytes for the AppMIC is not needed
- * because it is added to a stack variable at the time a
- * transmission occurs.
- *
- */
-BT_MESH_MODEL_PUB_DEFINE(gen_onoff_pub_srv, NULL, 2 + 2);
 
 static void respond_messsage_schedule(u16 *delay, u16 *duration, void *cb_data)
 {
@@ -119,19 +80,6 @@ static void respond_messsage_schedule(u16 *delay, u16 *duration, void *cb_data)
 static const struct bt_mesh_send_cb rsp_msg_cb = {
     .user_intercept = respond_messsage_schedule,
 };
-
-void light_lightness_state_sycn(u16 actual_lightness)
-{
-    struct level_state *r_level_state = root_models[2].user_data;
-    r_level_state->level = actual_lightness - 32768;
-
-    struct onoff_state *r_onoff_state = root_models[1].user_data;
-    if (actual_lightness > 0) {
-        r_onoff_state->current = 1;
-    } else {
-        r_onoff_state->current = 0;
-    }
-}
 
 static void lightness_get(struct bt_mesh_model *model,
                           struct bt_mesh_msg_ctx *ctx,
@@ -165,8 +113,6 @@ static void lightness_set_unack(struct bt_mesh_model *model,
     }
 
     light_state->lightness_last = light_state->lightness_actual;
-
-    light_lightness_state_sycn(light_state->lightness_actual);
 
     log_info("addr 0x%02x actual lightness 0x%02x\n", bt_mesh_model_elem(model)->addr, light_state->lightness_actual);
 }

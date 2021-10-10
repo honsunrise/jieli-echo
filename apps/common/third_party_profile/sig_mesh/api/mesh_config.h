@@ -89,7 +89,7 @@
 
 /* Element models config */
 #define CONFIG_BT_MESH_CFG_CLI                  1
-// #define CONFIG_BT_MESH_HEALTH_SRV               1
+#define CONFIG_BT_MESH_HEALTH_SRV               1
 #define CONFIG_BT_MESH_APP_KEY_COUNT            2
 #define CONFIG_BT_MESH_MODEL_KEY_COUNT          2
 #define CONFIG_BT_MESH_MODEL_GROUP_COUNT        2
